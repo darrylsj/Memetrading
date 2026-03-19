@@ -34,6 +34,14 @@ TIME_STOP_MINUTES = 120     # Sell after 2 hours no matter what
 POLL_INTERVAL = 15          # Check prices every 15 seconds
 GRACE_PERIOD_SECONDS = 60   # Don't trigger stop loss in first 60s (let spread settle)
 
+import math
+
+def log_return(entry_price, exit_price):
+    """Honest P&L: log returns sum correctly, arithmetic returns lie."""
+    if entry_price <= 0 or exit_price <= 0:
+        return 0
+    return math.log(exit_price / entry_price)
+
 POSITIONS_FILE = Path.home() / ".config" / "truemarkets" / "positions.json"
 TRADE_LOG = Path.home() / ".config" / "truemarkets" / "trade_log.json"
 
@@ -700,10 +708,12 @@ def cmd_monitor():
                     alert = f"{'🟢' if pnl_pct > 0 else '🔴'} {sym} {sell_reason}\nEntry ${entry:.4f} → ${cur_price:.4f}\nP&L: {pnl_pct*100:+.1f}% (${pnl_usd:+.2f})"
                     send_alert(alert)
                     
+                    lr = log_return(entry, cur_price)
                     log_trade({
                         "action": "SELL", "symbol": sym, "price": cur_price,
                         "entry_price": entry, "pnl_pct": round(pnl_pct * 100, 2),
                         "pnl_usd": round(pnl_usd, 2),
+                        "log_return": round(lr, 6),
                         "reason": sell_reason, "mins_held": round(mins_held, 1),
                         "time": datetime.now(timezone.utc).isoformat(),
                     })
